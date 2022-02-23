@@ -16,7 +16,9 @@
 
 package controllers
 
-import com.ideal.linked.toposoid.protocol.model.sat.SatSolverResult
+import cnf.FormulaUtils.{evaluateFormula, getSubFormula, makeFormula, makeSubFormula}
+import cnf.{And, Bool, False, Formula, Imp, Or, True}
+import com.ideal.linked.toposoid.protocol.model.sat.{FlattenedKnowledgeTree, SatSolverResult}
 import org.scalatestplus.play._
 import org.scalatestplus.play.guice._
 import play.api.Play.materializer
@@ -52,7 +54,18 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
       val jsonResult = contentAsJson(result).toString()
       val satSolverResult:SatSolverResult = Json.parse(jsonResult).as[SatSolverResult]
       satSolverResult.satResultMap.foreach(x => println(x._1, x._2) )
+
+      val flattenedKnowledgeTree:FlattenedKnowledgeTree = Json.parse(jsonStr).as[FlattenedKnowledgeTree]
+      val convertSubFormulaMap:Map[String, Formula] = flattenedKnowledgeTree.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
+      }
+      val formula:Formula = flattenedKnowledgeTree.formula.split(" ").foldLeft(List.empty[Formula]){
+        (acc, x) => makeFormula(convertSubFormulaMap, x, acc)
+      }.head
+      assert(evaluateFormula(satSolverResult.satResultMap, formula))
     }
+
   }
+
 
 }

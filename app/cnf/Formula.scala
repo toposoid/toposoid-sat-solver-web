@@ -19,6 +19,69 @@
 
 package cnf
 
+object FormulaUtils{
+  /**
+   * Converts an RPN-formatted formula to a Formula type. Target the subFormulaMap of FlattenedKnowledgeTree.
+   * @param symbol
+   * @param stack
+   * @return
+   */
+  def makeSubFormula (symbol: String, stack: List[Formula]): List[Formula] = stack match {
+    case List() => Bool(symbol) :: stack
+    case List(_) => Bool(symbol) :: stack
+    case x::y::ys => symbol match {
+      case "AND" => And(x, y) :: ys
+      case "OR" => Or(x, y) :: ys
+      case "IMP" => Imp(y, x) :: ys
+      case "true" => True :: stack
+      case "false" => False :: stack
+      case _ => Bool(symbol) :: stack
+    }
+  }
+
+  /**
+   * Converts an RPN-formatted formula to a Formula type. Target the formula of FlattenedKnowledgeTree.
+   * @param formulaMap
+   * @param symbol
+   * @param stack
+   * @return
+   */
+  def makeFormula (formulaMap:Map[String, Formula], symbol: String, stack: List[Formula]): List[Formula] = stack match {
+    case List() => Bool(symbol) :: stack
+    case List(_) => Bool(symbol) :: stack
+    case x::y::ys => symbol match {
+      case "AND" => And(getSubFormula(formulaMap, x), getSubFormula(formulaMap,y)) :: ys
+      case "OR" => Or(getSubFormula(formulaMap, x), getSubFormula(formulaMap, y)) :: ys
+      case _ => Bool(symbol) :: stack
+    }
+  }
+
+  /**
+   * Merge subFormulaMap and formula of FlattenedKnowledgeTree
+   * @param formulaMap
+   * @param formula
+   * @return
+   */
+  def getSubFormula(formulaMap:Map[String, Formula], formula:Formula):Formula={
+    formulaMap.isDefinedAt(formula.toString) match {
+      case true => formulaMap.get(formula.toString).get
+      case false => formula
+    }
+  }
+
+  /**
+   * Assign truth values to formulas
+   * @param satResultMap
+   * @param formula
+   * @return
+   */
+  def evaluateFormula(satResultMap:Map[String, Boolean], formula:Formula): Boolean = {
+    val assignment: Map[Bool, Boolean] = satResultMap.foldLeft(Map.empty[Bool, Boolean]) { (acc, x) => acc ++ Map(Bool(x._1) -> x._2) }
+    formula.value(assignment).get
+  }
+
+}
+
 abstract class Formula extends Serializable {
   def && (that: Formula) = And(this, that)
   def || (that: Formula) = Or(this, that)
@@ -221,6 +284,7 @@ case class Clause(literals: Set[Literal] = Set()) {
   override def toString =
     literals.mkString("{", ", ", "}")
 }
+
 object Tseitin {
 
   def flattenAnd(f: Formula): Set[Formula] = f match {
@@ -275,4 +339,6 @@ object Tseitin {
       }
     }
   }
+
 }
+
