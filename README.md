@@ -25,7 +25,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
   }
 }' http://localhost:9009/execute
 ```
-### This description expresses a tree structure of two-step hierarchical logical expressions. First, the target logical expression is expressed as a binary graph. The first layer is the structure of the main formula, and the second layer describes the structure when the first layer has a logical structure as a breakdown.
+This description expresses a tree structure of two-step hierarchical logical expressions. First, the target logical expression is expressed as a binary graph. The first layer is the structure of the main formula, and the second layer describes the structure when the first layer has a logical structure as a breakdown.
 * formula: It expresses the first-level formula in Reverse Polish Notation RPN format.　However, the only operators are AND and OR.
 * subFormulaMap: This is expressed in reverse Polish notation RPN format for the second-tier logical expression, and is described in Map format with the ID that identifies the node in the first-tier as the key. However, the only operators are AND and OR and →.
 
