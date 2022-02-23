@@ -13,7 +13,7 @@ This microservice provides solver functionality for Boolean satisfiability probl
 ```bssh
 docker-compose up -d
 ```
-It takes more than 20 minutes to pull the Docker image for the first time.
+
 ## Usage
 ```bash
 curl -X POST -H "Content-Type: application/json" -d '{
