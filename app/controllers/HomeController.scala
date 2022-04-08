@@ -17,7 +17,7 @@
 package controllers
 
 import cnf.FormulaUtils.{makeFormula, makeSubFormula}
-import cnf.{Clause, Formula, Tseitin}
+import cnf.{Clause, Formula, Literal, Tseitin}
 import com.ideal.linked.common.DeploymentConverter.conf
 import com.ideal.linked.toposoid.protocol.model.sat.{FlattenedKnowledgeTree, SatSolverResult}
 import com.typesafe.scalalogging.LazyLogging
@@ -53,12 +53,23 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       val convertSubFormulaMap:Map[String, Formula] = flattenedKnowledgeTree.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
         (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
       }
-      val formula:Formula = flattenedKnowledgeTree.formula.split(" ").foldLeft(List.empty[Formula]){
-        (acc, x) => makeFormula(convertSubFormulaMap, x, acc)
-      }.head
+      val formula:Formula = convertSubFormulaMap.size match{
+        case 1 => convertSubFormulaMap.head._2
+        case _ =>{
+          flattenedKnowledgeTree.formula.split(" ").foldLeft(List.empty[Formula]){
+            (acc, x) => makeFormula(convertSubFormulaMap, x, acc)
+          }.head
+        }
+      }
       val cnfExpression: Set[Clause] = Tseitin.transform(formula)
       logger.info(cnfExpression.toString())
-      val maxDummyVal:Int =  cnfExpression.flatMap(_.literals).filter(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(_.toString.replace("_", "").toInt).max
+      val dummyValues:Set[Literal] = cnfExpression.flatMap(_.literals).filter(x => x.toString.startsWith("-_") || x.toString.startsWith("+_"))
+
+      val maxDummyVal:Int = dummyValues.size match {
+        case 0 => 0
+        case _  => dummyValues.map(_.toString.replace("_", "").toInt).max
+      }
+
       val maxNumber:Int = cnfExpression.flatMap(_.literals).filterNot(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.toInt)).max
       val cnfHeader:String =  "p wcnf %d %d 0\n".format(maxNumber + maxDummyVal , cnfExpression.size)
       logger.info(cnfHeader)
