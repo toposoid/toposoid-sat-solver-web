@@ -34,7 +34,7 @@ import play.api.libs.json.Json
  */
 class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting {
 
-  "HomeController POST2" should {
+  "HomeController POST1" should {
     "returns an appropriate response" in {
       val controller: HomeController = inject[HomeController]
       val jsonStr:String = """{
@@ -63,6 +63,37 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
         (acc, x) => makeFormula(convertSubFormulaMap, x, acc)
       }.head
       assert(evaluateFormula(satSolverResult.satResultMap, formula))
+    }
+
+  }
+
+  "HomeController POST2" should {
+    "returns an appropriate response" in {
+      val controller: HomeController = inject[HomeController]
+      val jsonStr:String = """{
+                             |  "formula": "1",
+                             |  "subFormulaMap": {
+                             |    "1": "1 2 AND 2 6 AND AND 4 2 AND AND 2 3 AND AND 1 5 AND AND 5 3 AND AND 1 6 AND AND 2 1 AND AND 3 5 AND AND"
+                             |  }
+                             |}""".stripMargin
+      val fr = FakeRequest(POST, "/execute")
+        .withHeaders("Content-type" -> "application/json")
+        .withJsonBody(Json.parse(jsonStr))
+      val result  = call(controller.execute(), fr)
+      status(result) mustBe OK
+      contentType(result) mustBe Some("application/json")
+      val jsonResult = contentAsJson(result).toString()
+      val satSolverResult:SatSolverResult = Json.parse(jsonResult).as[SatSolverResult]
+      satSolverResult.satResultMap.foreach(x => println(x._1, x._2) )
+
+      val flattenedKnowledgeTree:FlattenedKnowledgeTree = Json.parse(jsonStr).as[FlattenedKnowledgeTree]
+      val convertSubFormulaMap:Map[String, Formula] = flattenedKnowledgeTree.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
+      }
+      val formula:Formula = flattenedKnowledgeTree.formula.split(" ").foldLeft(List.empty[Formula]){
+        (acc, x) => makeFormula(convertSubFormulaMap, x, acc)
+      }.head
+      //assert(evaluateFormula(satSolverResult.satResultMap, formula))
     }
 
   }
