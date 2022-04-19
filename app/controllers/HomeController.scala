@@ -19,7 +19,7 @@ package controllers
 import cnf.FormulaUtils.{makeFormula, makeSubFormula}
 import cnf.{Clause, Formula, Literal, Tseitin}
 import com.ideal.linked.common.DeploymentConverter.conf
-import com.ideal.linked.toposoid.protocol.model.sat.{FlattenedKnowledgeTree, SatSolverResult}
+import com.ideal.linked.toposoid.protocol.model.sat.{FlattenedKnowledgeTree, FormulaSet, SatSolverResult}
 import com.typesafe.scalalogging.LazyLogging
 
 import javax.inject._
@@ -50,34 +50,9 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
     try {
       val json = request.body
       val flattenedKnowledgeTree : FlattenedKnowledgeTree = Json.parse(json.toString).as[FlattenedKnowledgeTree]
-      val convertSubFormulaMap:Map[String, Formula] = flattenedKnowledgeTree.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
-        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
-      }
-      val formula:Formula = convertSubFormulaMap.size match{
-        case 1 => convertSubFormulaMap.head._2
-        case _ =>{
-          flattenedKnowledgeTree.formula.split(" ").foldLeft(List.empty[Formula]){
-            (acc, x) => makeFormula(convertSubFormulaMap, x, acc)
-          }.head
-        }
-      }
-      val cnfExpression: Set[Clause] = Tseitin.transform(formula)
-      logger.info(cnfExpression.toString())
-      val dummyValues:Set[Literal] = cnfExpression.flatMap(_.literals).filter(x => x.toString.startsWith("-_") || x.toString.startsWith("+_"))
-
-      val maxDummyVal:Int = dummyValues.size match {
-        case 0 => 0
-        case _  => dummyValues.map(_.toString.replace("_", "").toInt).max
-      }
-
-      val maxNumber:Int = cnfExpression.flatMap(_.literals).filterNot(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.toInt)).max
-      val cnfHeader:String =  "p wcnf %d %d 0\n".format(maxNumber + maxDummyVal , cnfExpression.size)
-      logger.info(cnfHeader)
-      val convertCnfExpression:Set[Set[Int]] = cnfExpression.map(_.literals.map( x => convertDummyVal(x.toString, maxNumber)))
-      val fileIO = new PrintWriter("/tmp/test.cnf")
-      fileIO.write(cnfHeader)
-      convertCnfExpression.foreach(x => fileIO.write("100 " + x.mkString(" ") + " 0\n") )
-      fileIO.close()
+      val regulationCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.regulation)
+      val hypothesisCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.hypothesis)
+      convertCnf(regulationCnf, hypothesisCnf)
       val(status:Int, output:List[String], error:List[String]) = this.executeProcess(Seq(conf.getString("maxsat.solver"), conf.getString("maxsat.cnfFilePath")))
       Ok(Json.toJson(this.getSatSolverResult(status, output, error))).as(JSON)
 
@@ -87,6 +62,50 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
         BadRequest(Json.obj("status" ->"Error", "message" -> e.toString()))
       }
     }
+  }
+
+  private def getCnfExpression(formulaSet:FormulaSet): Set[Clause] ={
+    val convertSubFormulaMap:Map[String, Formula] = formulaSet.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+      (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
+    }
+    val formula:Formula = convertSubFormulaMap.size match{
+      case 1 => convertSubFormulaMap.head._2
+      case _ =>{
+        formulaSet.formula.split(" ").foldLeft(List.empty[Formula]){
+          (acc, x) => makeFormula(convertSubFormulaMap, x, acc)
+        }.head
+      }
+    }
+    Tseitin.transform(formula)
+  }
+
+  private def convertCnf(regulationCnf:Set[Clause], hypothesisCnf:Set[Clause]): Unit = {
+
+    val maxAtomNumber:Int = (regulationCnf ++ hypothesisCnf).flatMap(_.literals).filterNot(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.toInt)).max
+
+    val dummyValuesReg:Set[Literal] = regulationCnf.flatMap(_.literals).filter(x => x.toString.startsWith("-_") || x.toString.startsWith("+_"))
+    val maxDummyValReg:Int = dummyValuesReg.size match {
+      case 0 => 0
+      case _  => dummyValuesReg.map(_.toString.replace("_", "").toInt).max
+    }
+
+    val dummyValuesHypo:Set[Literal] = hypothesisCnf.flatMap(_.literals).filter(x => x.toString.startsWith("-_") || x.toString.startsWith("+_"))
+    val maxDummyValHypo:Int = dummyValuesHypo.size match {
+      case 0 => 0
+      case _  => dummyValuesHypo.map(_.toString.replace("_", "").toInt).max
+    }
+
+    val convertCnfExpressionReg:Set[Set[Int]] = regulationCnf.map(_.literals.map( x => convertDummyVal(x.toString, maxAtomNumber)))
+    val convertCnfExpressionHypo:Set[Set[Int]] = hypothesisCnf.map(_.literals.map( x => convertDummyVal(x.toString, maxAtomNumber + maxDummyValReg)))
+    val cnfHeader:String =  "p wcnf %d %d 100\n".format(maxAtomNumber + maxDummyValReg + maxDummyValHypo, regulationCnf.size + hypothesisCnf.size)
+
+    logger.info(cnfHeader)
+    val fileIO = new PrintWriter("/tmp/test.cnf")
+    fileIO.write(cnfHeader)
+    convertCnfExpressionReg.foreach(x => fileIO.write("100 " + x.mkString(" ") + " 0\n") )
+    convertCnfExpressionHypo.foreach(x => fileIO.write("10 " + x.mkString(" ") + " 0\n") )
+    fileIO.close()
+
   }
 
   /**
