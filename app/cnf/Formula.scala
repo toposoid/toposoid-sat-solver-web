@@ -28,11 +28,16 @@ object FormulaUtils{
    */
   def makeSubFormula (symbol: String, stack: List[Formula]): List[Formula] = stack match {
     case List() => Bool(symbol) :: stack
-    case List(_) => Bool(symbol) :: stack
+    //case List(_) => Bool(symbol) :: stack
+    case  x:: Nil => symbol match {
+      case "NOT" =>  Neg(x) :: stack
+      case _ => Bool(symbol) :: stack
+    }
     case x::y::ys => symbol match {
       case "AND" => And(x, y) :: ys
       case "OR" => Or(x, y) :: ys
       case "IMP" => Imp(y, x) :: ys
+      case "NOT" => Neg(x) :: y :: ys
       case "true" => True :: stack
       case "false" => False :: stack
       case _ => Bool(symbol) :: stack

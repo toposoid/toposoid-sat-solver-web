@@ -16,8 +16,8 @@
 
 package controllers
 
-import cnf.FormulaUtils.{evaluateFormula, getSubFormula, makeFormula, makeSubFormula}
-import cnf.{And, Bool, False, Formula, Imp, Or, True}
+import cnf.FormulaUtils.{evaluateFormula, makeFormula, makeSubFormula}
+import cnf.{And, Formula}
 import com.ideal.linked.toposoid.protocol.model.sat.{FlattenedKnowledgeTree, SatSolverResult}
 import org.scalatestplus.play._
 import org.scalatestplus.play.guice._
@@ -37,14 +37,24 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
   "HomeController POST1" should {
     "returns an appropriate response" in {
       val controller: HomeController = inject[HomeController]
+
       val jsonStr:String = """{
-                             |  "formula": "1 6 AND 10 OR",
-                             |  "subFormulaMap": {
-                             |    "1": "1 2 AND 3 4 OR 4 true AND AND 3 true AND AND IMP",
-                             |    "6": "true 7 AND 8 true OR IMP",
-                             |    "10": "10 11 AND 10 12 AND AND 13 14 OR IMP"
-                             |  }
+                             |    "regulation": {
+                             |        "formula": "1 2 OR 3 OR",
+                             |        "subFormulaMap": {
+                             |            "1": "1 2 AND 1 3 NOT AND AND",
+                             |            "2": "1 2 NOT AND 1 3 AND AND",
+                             |            "3": "1 NOT 2 AND 2 3 AND AND"
+                             |        }
+                             |    },
+                             |    "hypothesis": {
+                             |        "formula": "1",
+                             |        "subFormulaMap": {
+                             |            "1": "1 3 NOT IMP 2 1 IMP AND 3 2 NOT IMP AND"
+                             |        }
+                             |    }
                              |}""".stripMargin
+
       val fr = FakeRequest(POST, "/execute")
         .withHeaders("Content-type" -> "application/json")
         .withJsonBody(Json.parse(jsonStr))
@@ -56,26 +66,47 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
       satSolverResult.satResultMap.foreach(x => println(x._1, x._2) )
 
       val flattenedKnowledgeTree:FlattenedKnowledgeTree = Json.parse(jsonStr).as[FlattenedKnowledgeTree]
-      val convertSubFormulaMap:Map[String, Formula] = flattenedKnowledgeTree.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+
+      val convertSubFormulaMap1:Map[String, Formula] = flattenedKnowledgeTree.regulation.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
         (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
       }
-      val formula:Formula = flattenedKnowledgeTree.formula.split(" ").foldLeft(List.empty[Formula]){
-        (acc, x) => makeFormula(convertSubFormulaMap, x, acc)
+      val formula1:Formula = flattenedKnowledgeTree.hypothesis.formula.split(" ").foldLeft(List.empty[Formula]){
+        (acc, x) => makeFormula(convertSubFormulaMap1, x, acc)
       }.head
-      assert(evaluateFormula(satSolverResult.satResultMap, formula))
+      val convertSubFormulaMap2:Map[String, Formula] = flattenedKnowledgeTree.hypothesis.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
+      }
+      val formula2:Formula = flattenedKnowledgeTree.hypothesis.formula.split(" ").foldLeft(List.empty[Formula]){
+        (acc, x) => makeFormula(convertSubFormulaMap2, x, acc)
+      }.head
+      assert(evaluateFormula(satSolverResult.satResultMap, And(formula1, formula2)))
     }
 
   }
+
 
   "HomeController POST2" should {
     "returns an appropriate response" in {
       val controller: HomeController = inject[HomeController]
       val jsonStr:String = """{
-                             |  "formula": "1",
-                             |  "subFormulaMap": {
-                             |    "1": "1 2 AND 2 6 AND AND 4 2 AND AND 2 3 AND AND 1 5 AND AND 5 3 AND AND 1 6 AND AND 2 1 AND AND 3 5 AND AND"
-                             |  }
+                             |    "regulation": {
+                             |        "formula": "1 2 OR 3 OR",
+                             |        "subFormulaMap": {
+                             |            "1": "1 2 AND 1 3 NOT AND AND",
+                             |            "2": "1 2 NOT AND 1 3 AND AND",
+                             |            "3": "1 NOT 2 AND 2 3 AND AND"
+                             |        }
+                             |    },
+                             |    "hypothesis": {
+                             |        "formula": "1 6 AND 10 OR",
+                             |        "subFormulaMap": {
+                             |            "1": "1 2 AND 3 4 OR 4 true AND AND 3 true AND AND IMP",
+                             |            "6": "true 7 AND 8 true OR IMP",
+                             |            "10": "10 11 AND 10 12 AND AND 13 14 OR IMP"
+                             |        }
+                             |    }
                              |}""".stripMargin
+
       val fr = FakeRequest(POST, "/execute")
         .withHeaders("Content-type" -> "application/json")
         .withJsonBody(Json.parse(jsonStr))
@@ -87,16 +118,42 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
       satSolverResult.satResultMap.foreach(x => println(x._1, x._2) )
 
       val flattenedKnowledgeTree:FlattenedKnowledgeTree = Json.parse(jsonStr).as[FlattenedKnowledgeTree]
-      val convertSubFormulaMap:Map[String, Formula] = flattenedKnowledgeTree.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+      val convertSubFormulaMap1:Map[String, Formula] = flattenedKnowledgeTree.regulation.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
         (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
       }
-      val formula:Formula = flattenedKnowledgeTree.formula.split(" ").foldLeft(List.empty[Formula]){
-        (acc, x) => makeFormula(convertSubFormulaMap, x, acc)
+      val formula1:Formula = flattenedKnowledgeTree.hypothesis.formula.split(" ").foldLeft(List.empty[Formula]){
+        (acc, x) => makeFormula(convertSubFormulaMap1, x, acc)
       }.head
-      //assert(evaluateFormula(satSolverResult.satResultMap, formula))
+      val convertSubFormulaMap2:Map[String, Formula] = flattenedKnowledgeTree.hypothesis.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
+      }
+      val formula2:Formula = flattenedKnowledgeTree.hypothesis.formula.split(" ").foldLeft(List.empty[Formula]){
+        (acc, x) => makeFormula(convertSubFormulaMap2, x, acc)
+      }.head
+      assert(evaluateFormula(satSolverResult.satResultMap, And(formula1, formula2)))
     }
 
   }
+  /*
+  val jsonStr:String = """{
+                         |  "formula": "1",
+                         |  "subFormulaMap": {
+                         |    "1": "1 3 NOT IMP 2 1 IMP AND 3 2 NOT IMP AND"
+                         |  }
+                         |}""".stripMargin
 
+  val jsonStr:String = """{
+                         |  "formula": "1",
+                         |  "subFormulaMap": {
+                         |    "1": "1 2 NOT IMP 2 3 NOT IMP AND 3 1 IMP AND"
+                         |  }
+                         |}""".stripMargin
+  val jsonStr:String = """{
+                         |  "formula": "1",
+                         |  "subFormulaMap": {
+                         |    "1": "1 3 NOT IMP 2 3 IMP AND 3 1 NOT IMP AND"
+                         |  }
+                         |}""".stripMargin
+  */
 
 }
