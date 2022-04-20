@@ -16,7 +16,7 @@
 
 package controllers
 
-import cnf.FormulaUtils.{makeFormula, makeSubFormula}
+import cnf.FormulaUtils.{evaluateFormula, makeFormula, makeSubFormula}
 import cnf.{Clause, Formula, Literal, Tseitin}
 import com.ideal.linked.common.DeploymentConverter.conf
 import com.ideal.linked.toposoid.protocol.model.sat.{FlattenedKnowledgeTree, FormulaSet, SatSolverResult}
@@ -115,7 +115,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
    * @param error
    * @return
    */
-  private def getSatSolverResult(status:Int, output:List[String], error:List[String]): SatSolverResult ={
+  private def getSatSolverResult(status:Int, output:List[String], error:List[String], formulaSet:FormulaSet): SatSolverResult ={
     logger.debug("processResult:" +  status.toString)
     if(error.size == 0){
       logger.info("OPTIMUM FOUND")
@@ -124,14 +124,20 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
         val solverResult:Map[String, Boolean] = output.filter(_.startsWith("v ")).head.split(" ").filterNot(_.equals("v")).foldLeft(Map.empty[String, Boolean]){
           (acc, x) => acc ++ Map(x.replace("-", "") -> (!x.startsWith("-")))
         }
-        SatSolverResult(solverResult)
+        val convertSubFormulaMap:Map[String, Formula] = formulaSet.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+          (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
+        }
+        val subFormulaResultMap:Map[String, Boolean] = convertSubFormulaMap.foldLeft(Map.empty[String, Boolean]){
+          (acc, x) => acc ++ Map(x._1 -> evaluateFormula(solverResult, x._2))
+        }
+        SatSolverResult(solverResult, subFormulaResultMap, "OPTIMUM FOUND")
       }else{
         logger.info("Unsatisfied")
-        SatSolverResult(Map.empty[String, Boolean])
+        SatSolverResult(Map.empty[String, Boolean],Map.empty[String, Boolean], "UNSATISFIED")
       }
     }else{
       logger.error(error.mkString(" "))
-      SatSolverResult(Map.empty[String, Boolean])
+      SatSolverResult(Map.empty[String, Boolean], Map.empty[String, Boolean], "ERROR")
     }
   }
 
