@@ -74,10 +74,7 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
         (acc, x) => makeFormula(convertSubFormulaMap1, x, acc)
       }.head
       assert(evaluateFormula(satSolverResult.satResultMap, formula1))
-      val convertSubFormulaMap2:Map[String, Formula] = flattenedKnowledgeTree.hypothesis.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
-        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
-      }
-      convertSubFormulaMap2.foreach(x => print(x._2, evaluateFormula(satSolverResult.satResultMap, x._2)))
+      satSolverResult.satResultMap.foreach(x => println(x._1 + ":" + x._2))
     }
 
   }
@@ -123,10 +120,7 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
         (acc, x) => makeFormula(convertSubFormulaMap1, x, acc)
       }.head
       assert(evaluateFormula(satSolverResult.satResultMap, formula1))
-      val convertSubFormulaMap2:Map[String, Formula] = flattenedKnowledgeTree.hypothesis.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
-        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
-      }
-      convertSubFormulaMap2.foreach(x => print(x._2, evaluateFormula(satSolverResult.satResultMap, x._2)))
+      satSolverResult.satResultMap.foreach(x => println(x._1 + ":" + x._2))
     }
 
   }
