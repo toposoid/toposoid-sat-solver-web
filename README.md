@@ -17,15 +17,28 @@ docker-compose up -d
 ## Usage
 ```bash
 curl -X POST -H "Content-Type: application/json" -d '{
-  "formula": "1 6 AND 10 OR",
-  "subFormulaMap": {
-    "1": "1 2 AND 3 4 OR 4 true AND AND 3 true AND AND IMP",
-    "6": "true 7 AND 8 true OR IMP",
-    "10": "10 11 AND 10 12 AND AND 13 14 OR IMP"
-  }
+    "regulation": {
+        "formula": "1 2 OR 3 OR",
+        "subFormulaMap": {
+            "1": "1 2 AND 1 3 NOT AND AND",
+            "2": "1 2 NOT AND 1 3 AND AND",
+            "3": "1 NOT 2 AND 2 3 AND AND"
+        }
+    },
+    "hypothesis": {
+        "formula": "1 6 AND 10 OR",
+        "subFormulaMap": {
+            "1": "1 2 AND 3 4 OR 4 true AND AND 3 true AND AND IMP",
+            "6": "true 7 AND 8 true OR IMP",
+            "10": "10 11 AND 10 12 AND AND 13 14 OR IMP"
+        }
+    }
 }' http://localhost:9009/execute
 ```
-This description expresses a tree structure of two-step hierarchical logical expressions. First, the target logical expression is expressed as a binary graph. The first layer is the structure of the main formula, and the second layer describes the structure when the first layer has a logical structure as a breakdown.
+The requset json consists of regulation and hypothesis. In regulation, describe the tautology (which must be true).
+hypothesis describes as many logical expressions as possible.
+The way of describing the logical expression is that the first layer is the structure of the main expression, and the second layer describes the structure when the first layer has the logical structure as a breakdown.
+This description expresses a tree structure of two-step hierarchical logical expressions. First, the target logical expression is expressed as a binary graph. 
 * formula: It expresses the first-level formula in Reverse Polish Notation RPN format.　However, the only operators are AND and OR.
 * subFormulaMap: This is expressed in reverse Polish notation RPN format for the second-tier logical expression, and is described in Map format with the ID that identifies the node in the first-tier as the key. However, the only operators are AND and OR and →.
 
