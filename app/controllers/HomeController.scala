@@ -54,7 +54,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       val hypothesisCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.hypothesis)
       convertCnf(regulationCnf, hypothesisCnf)
       val(status:Int, output:List[String], error:List[String]) = this.executeProcess(Seq(conf.getString("maxsat.solver"), conf.getString("maxsat.cnfFilePath")))
-      Ok(Json.toJson(this.getSatSolverResult(status, output, error))).as(JSON)
+      Ok(Json.toJson(this.getSatSolverResult(status, output, error, flattenedKnowledgeTree.hypothesis))).as(JSON)
 
     }catch{
       case e: Exception => {
