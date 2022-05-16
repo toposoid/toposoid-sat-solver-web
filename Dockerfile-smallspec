@@ -1,4 +1,4 @@
-FROM toposoid/toposoid-core:0.3-SNAPSHOT
+FROM toposoid/toposoid-core:0.3
 
 WORKDIR /app
 ARG TARGET_BRANCH
@@ -23,7 +23,7 @@ RUN apt-get install --no-install-recommends -y build-essential unzip zlib1g-dev 
 && sbt playUpdateSecret 1> /dev/null \
 && sbt dist \
 && cd /app/toposoid-sat-solver-web/target/universal \
-&& unzip -o toposoid-sat-solver-web-0.3-SNAPSHOT.zip
+&& unzip -o toposoid-sat-solver-web-0.3.zip
 
 
 COPY ./docker-entrypoint.sh /app/
