@@ -56,6 +56,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       val hypothesisCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.hypothesis)
       val cnfFile = convertCnf(regulationCnf, hypothesisCnf)
       val(status:Int, output:List[String], error:List[String]) = this.executeProcess(Seq(conf.getString("maxsat.solver"), cnfFile))
+      Files.deleteIfExists(Paths.get(cnfFile))
       Ok(Json.toJson(this.getSatSolverResult(status, output, error, flattenedKnowledgeTree.hypothesis))).as(JSON)
 
     }catch{
@@ -117,7 +118,6 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
     val source = scala.io.Source.fromFile(cnfFilename, "UTF-8")
     val lines = source.getLines
     logger.info(lines.mkString("\t"))
-    Files.deleteIfExists(Paths.get(cnfFilename))
     cnfFilename
   }
 
