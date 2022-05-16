@@ -28,9 +28,11 @@ import play.api.libs.json.Json
 import play.api.mvc._
 
 import java.io.PrintWriter
-import scala.math.abs
+import scala.math.{abs, log10}
 import scala.collection.mutable.ArrayBuffer
 import scala.sys.process.{Process, ProcessLogger}
+import io.jvm.uuid.UUID
+import java.nio.file.{Paths, Files}
 
 /**
  * This controller creates an `Action` to apply the satisfiability problem (SAT) to the formula.
@@ -52,8 +54,8 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       val flattenedKnowledgeTree : FlattenedKnowledgeTree = Json.parse(json.toString).as[FlattenedKnowledgeTree]
       val regulationCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.regulation)
       val hypothesisCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.hypothesis)
-      convertCnf(regulationCnf, hypothesisCnf)
-      val(status:Int, output:List[String], error:List[String]) = this.executeProcess(Seq(conf.getString("maxsat.solver"), conf.getString("maxsat.cnfFilePath")))
+      val cnfFile = convertCnf(regulationCnf, hypothesisCnf)
+      val(status:Int, output:List[String], error:List[String]) = this.executeProcess(Seq(conf.getString("maxsat.solver"), cnfFile))
       Ok(Json.toJson(this.getSatSolverResult(status, output, error, flattenedKnowledgeTree.hypothesis))).as(JSON)
 
     }catch{
@@ -79,7 +81,13 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
     Tseitin.transform(formula)
   }
 
-  private def convertCnf(regulationCnf:Set[Clause], hypothesisCnf:Set[Clause]): Unit = {
+  /**
+   *
+   * @param regulationCnf
+   * @param hypothesisCnf
+   * @return
+   */
+  private def convertCnf(regulationCnf:Set[Clause], hypothesisCnf:Set[Clause]): String = {
 
     val maxAtomNumber:Int = (regulationCnf ++ hypothesisCnf).flatMap(_.literals).filterNot(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.toInt)).max
 
@@ -99,13 +107,18 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
     val convertCnfExpressionHypo:Set[Set[Int]] = hypothesisCnf.map(_.literals.map( x => convertDummyVal(x.toString, maxAtomNumber + maxDummyValReg)))
     val cnfHeader:String =  "p wcnf %d %d 100\n".format(maxAtomNumber + maxDummyValReg + maxDummyValHypo, regulationCnf.size + hypothesisCnf.size)
 
-    logger.info(cnfHeader)
-    val fileIO = new PrintWriter("/tmp/test.cnf")
+    val cnfFilename:String = conf.getString("maxsat.cnfFilePath") + "/"  + UUID.random.toString
+    val fileIO = new PrintWriter(cnfFilename)
     fileIO.write(cnfHeader)
     convertCnfExpressionReg.foreach(x => fileIO.write("100 " + x.mkString(" ") + " 0\n") )
     convertCnfExpressionHypo.foreach(x => fileIO.write("10 " + x.mkString(" ") + " 0\n") )
     fileIO.close()
 
+    val source = scala.io.Source.fromFile(cnfFilename, "UTF-8")
+    val lines = source.getLines
+    logger.info(lines.mkString("\t"))
+    Files.deleteIfExists(Paths.get(cnfFilename))
+    cnfFilename
   }
 
   /**
