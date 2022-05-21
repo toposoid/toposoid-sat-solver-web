@@ -45,6 +45,7 @@ This description expresses a tree structure of two-step hierarchical logical exp
 ## Note
 * This microservice uses 9009 as the default port.
 * If you want to run in a remote environment or a virtual environment, change PRIVATE_IP_ADDRESS in docker-compose.yml according to your environment.
+* The SatSolver library uses [EvalMaxSAT](https://github.com/toposoid/EvalMaxSAT).　
 
 ## License
 toposoid/toposoid-sat-solver-web is Open Source software released under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0.html).
