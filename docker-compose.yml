@@ -9,7 +9,7 @@ networks:
 
 services:
   toposoid-sat-solver-web:
-    image: toposoid-sat-solver-web:0.3
+    image: toposoid/toposoid-sat-solver-web:0.4-SNAPSHOT
     environment:
       - PRIVATE_IP_ADDRESS=172.30.0.2
       - PLAY_HTTP_PORT=9009
