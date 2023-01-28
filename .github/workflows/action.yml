@@ -9,7 +9,7 @@ env:
   PJ_ACTOR: toposoid
   PJ_REPO: toposoid-sat-solver-web
   PJ_BRANCH: feature
-  PJ_VERSION: 0.4-SNAPSHOT
+  PJ_VERSION: 0.4
 jobs:
   unit-test_toposoid-sat-solver-web:
     runs-on: ubuntu-20.04
