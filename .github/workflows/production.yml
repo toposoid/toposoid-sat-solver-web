@@ -1,13 +1,15 @@
 name: Test And Build
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
-      - feature
+      - main
   workflow_dispatch:
 env:
   PJ_ACTOR: toposoid
   PJ_REPO: toposoid-sat-solver-web
-  PJ_BRANCH: feature
+  PJ_BRANCH: main
   PJ_VERSION: 0.5-SNAPSHOT
 jobs:
   unit-test_toposoid-sat-solver-web:
