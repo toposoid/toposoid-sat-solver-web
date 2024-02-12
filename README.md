@@ -9,9 +9,9 @@ This microservice provides solver functionality for Boolean satisfiability probl
 * Docker version 20.10.x, or later
 * docker-compose version 1.22.x
 
-## Setup
+## Setup For Standalone
 ```bssh
-docker-compose up -d
+docker-compose up
 ```
 
 ## Usage
