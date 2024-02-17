@@ -1,7 +1,7 @@
 version: '3'
 services:
   toposoid-sat-solver-web:
-    image: toposoid-sat-solver-web:0.5-SNAPSHOT
+    image: toposoid-sat-solver-web:0.5
     tty: true
     environment:
       - PRIVATE_IP_ADDRESS=toposoid-sat-solver-web

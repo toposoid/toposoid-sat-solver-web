@@ -1,4 +1,4 @@
-FROM toposoid/toposoid-scala-lib-base:0.5-SNAPSHOT
+FROM toposoid/toposoid-scala-lib-base:0.5
 
 WORKDIR /app
 ARG TARGET_BRANCH
@@ -24,7 +24,7 @@ RUN apt-get update \
 && sbt playUpdateSecret 1> /dev/null \
 && sbt dist \
 && cd /app/toposoid-sat-solver-web/target/universal \
-&& unzip -o toposoid-sat-solver-web-0.5-SNAPSHOT.zip
+&& unzip -o toposoid-sat-solver-web-0.5.zip
 
 
 COPY ./docker-entrypoint.sh /app/
