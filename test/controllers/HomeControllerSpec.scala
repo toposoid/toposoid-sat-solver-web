@@ -18,6 +18,7 @@ package controllers
 
 import cnf.FormulaUtils.{evaluateFormula, makeFormula, makeSubFormula}
 import cnf.{And, Formula}
+import com.ideal.linked.toposoid.common.{TRANSVERSAL_STATE, TransversalState}
 import com.ideal.linked.toposoid.protocol.model.sat.{FlattenedKnowledgeTree, SatSolverResult}
 import org.scalatestplus.play._
 import org.scalatestplus.play.guice._
@@ -33,6 +34,8 @@ import play.api.libs.json.Json
  * For more information, see https://www.playframework.com/documentation/latest/ScalaTestingWithScalaTest
  */
 class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting {
+
+  val transversalState:String = Json.toJson(TransversalState(username="guest")).toString()
 
   "HomeController POST1" should {
     "returns an appropriate response" in {
@@ -56,7 +59,7 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
                              |}""".stripMargin
 
       val fr = FakeRequest(POST, "/execute")
-        .withHeaders("Content-type" -> "application/json")
+        .withHeaders("Content-type" -> "application/json", TRANSVERSAL_STATE.str -> transversalState)
         .withJsonBody(Json.parse(jsonStr))
       val result  = call(controller.execute(), fr)
       status(result) mustBe OK
@@ -103,7 +106,7 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
                              |}""".stripMargin
 
       val fr = FakeRequest(POST, "/execute")
-        .withHeaders("Content-type" -> "application/json")
+        .withHeaders("Content-type" -> "application/json", TRANSVERSAL_STATE.str -> transversalState)
         .withJsonBody(Json.parse(jsonStr))
       val result  = call(controller.execute(), fr)
       status(result) mustBe OK
