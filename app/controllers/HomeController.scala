@@ -61,12 +61,12 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       val(status:Int, output:List[String], error:List[String]) = this.executeProcess(Seq(conf.getString("maxsat.solver"), cnfFile))
       Files.deleteIfExists(Paths.get(cnfFile))
       val response = this.getSatSolverResult(status, output, error, flattenedKnowledgeTree.hypothesis, transversalState)
-      logger.info(ToposoidUtils.formatMessageForLogger("SAT completed.", transversalState.username))
+      logger.info(ToposoidUtils.formatMessageForLogger("SAT completed.", transversalState.userId))
       Ok(Json.toJson(response)).as(JSON)
 
     }catch{
       case e: Exception => {
-        logger.error(ToposoidUtils.formatMessageForLogger(e.toString, transversalState.username), e)
+        logger.error(ToposoidUtils.formatMessageForLogger(e.toString, transversalState.userId), e)
         BadRequest(Json.obj("status" ->"Error", "message" -> e.toString()))
       }
     }
@@ -122,7 +122,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
 
     val source = scala.io.Source.fromFile(cnfFilename, "UTF-8")
     val lines = source.getLines
-    logger.info(ToposoidUtils.formatMessageForLogger(lines.mkString("\n"), transversalState.username))
+    logger.info(ToposoidUtils.formatMessageForLogger(lines.mkString("\n"), transversalState.userId))
     cnfFilename
   }
 
@@ -136,7 +136,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
   private def getSatSolverResult(status:Int, output:List[String], error:List[String], formulaSet:FormulaSet, transversalState:TransversalState): SatSolverResult ={
     logger.debug("processResult:" +  status.toString)
     if(error.size == 0){
-      logger.info(ToposoidUtils.formatMessageForLogger("OPTIMUM FOUND", transversalState.username))
+      logger.info(ToposoidUtils.formatMessageForLogger("OPTIMUM FOUND", transversalState.userId))
       val solverStatus = output.filter(_.startsWith("s ")).head.replace("s ", "")
       if(solverStatus.indexOf("OPTIMUM") != -1){
         val solverResult:Map[String, Boolean] = output.filter(_.startsWith("v ")).head.split(" ").filterNot(_.equals("v")).foldLeft(Map.empty[String, Boolean]){
@@ -150,11 +150,11 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
         }
         SatSolverResult(solverResult, subFormulaResultMap, "OPTIMUM FOUND")
       }else{
-        logger.info(ToposoidUtils.formatMessageForLogger("Unsatisfied", transversalState.username))
+        logger.info(ToposoidUtils.formatMessageForLogger("Unsatisfied", transversalState.userId))
         SatSolverResult(Map.empty[String, Boolean],Map.empty[String, Boolean], "UNSATISFIED")
       }
     }else{
-      logger.info(ToposoidUtils.formatMessageForLogger(error.mkString(" "), transversalState.username))
+      logger.info(ToposoidUtils.formatMessageForLogger(error.mkString(" "), transversalState.userId))
       SatSolverResult(Map.empty[String, Boolean], Map.empty[String, Boolean], "ERROR")
     }
   }

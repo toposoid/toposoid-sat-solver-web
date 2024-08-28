@@ -35,7 +35,7 @@ import play.api.libs.json.Json
  */
 class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting {
 
-  val transversalState:String = Json.toJson(TransversalState(username="guest")).toString()
+  val transversalState:String = Json.toJson(TransversalState(userId="test-user", username="guest", roleId=0, csrfToken = "")).toString()
 
   "HomeController POST1" should {
     "returns an appropriate response" in {
