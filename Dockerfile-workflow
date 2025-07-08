@@ -4,7 +4,7 @@ WORKDIR /app
 ARG TARGET_BRANCH
 ARG JAVA_OPT_XMX
 ENV DEPLOYMENT=local
-ENV _JAVA_OPTIONS="-Xms256m -Xmx"${JAVA_OPT_XMX}
+ENV _JAVA_OPTIONS="-Xms256m -Xmx4g"
 
 RUN apt-get update \
 && apt-get install --no-install-recommends -y build-essential unzip zlib1g-dev cmake \
