@@ -18,4 +18,4 @@ fi
 
 export _JAVA_OPTIONS=$_JAVA_OPTIONS
 cd /app/toposoid-sat-solver-web/target/universal
-toposoid-sat-solver-web-0.6-SNAPSHOT/bin/toposoid-sat-solver-web
+toposoid-sat-solver-web-0.6/bin/toposoid-sat-solver-web
