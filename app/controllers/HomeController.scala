@@ -1,17 +1,18 @@
 /*
- * Copyright 2021 Linked Ideal LLC.[https://linked-ideal.com/]
+ * Copyright (C) 2025  Linked Ideal LLC.[https://linked-ideal.com/]
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package controllers
@@ -19,6 +20,7 @@ package controllers
 import cnf.FormulaUtils.{evaluateFormula, makeFormula, makeSubFormula}
 import cnf.{Clause, Formula, Literal, Tseitin}
 import com.ideal.linked.common.DeploymentConverter.conf
+import com.ideal.linked.toposoid.common.{TRANSVERSAL_STATE, ToposoidUtils, TransversalState}
 import com.ideal.linked.toposoid.protocol.model.sat.{FlattenedKnowledgeTree, FormulaSet, SatSolverResult}
 import com.typesafe.scalalogging.LazyLogging
 
@@ -32,7 +34,8 @@ import scala.math.{abs, log10}
 import scala.collection.mutable.ArrayBuffer
 import scala.sys.process.{Process, ProcessLogger}
 import io.jvm.uuid.UUID
-import java.nio.file.{Paths, Files}
+
+import java.nio.file.{Files, Paths}
 
 /**
  * This controller creates an `Action` to apply the satisfiability problem (SAT) to the formula.
@@ -49,19 +52,22 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
    * @return
    */
   def execute()  = Action(parse.json) { request =>
+    val transversalState = Json.parse(request.headers.get(TRANSVERSAL_STATE .str).get).as[TransversalState]
     try {
       val json = request.body
       val flattenedKnowledgeTree : FlattenedKnowledgeTree = Json.parse(json.toString).as[FlattenedKnowledgeTree]
       val regulationCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.regulation)
       val hypothesisCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.hypothesis)
-      val cnfFile = convertCnf(regulationCnf, hypothesisCnf)
+      val cnfFile = convertCnf(regulationCnf, hypothesisCnf, transversalState)
       val(status:Int, output:List[String], error:List[String]) = this.executeProcess(Seq(conf.getString("maxsat.solver"), cnfFile))
       Files.deleteIfExists(Paths.get(cnfFile))
-      Ok(Json.toJson(this.getSatSolverResult(status, output, error, flattenedKnowledgeTree.hypothesis))).as(JSON)
+      val response = this.getSatSolverResult(status, output, error, flattenedKnowledgeTree.hypothesis, transversalState)
+      logger.info(ToposoidUtils.formatMessageForLogger("SAT completed.", transversalState.userId))
+      Ok(Json.toJson(response)).as(JSON)
 
     }catch{
       case e: Exception => {
-        logger.error(e.toString, e)
+        logger.error(ToposoidUtils.formatMessageForLogger(e.toString, transversalState.userId), e)
         BadRequest(Json.obj("status" ->"Error", "message" -> e.toString()))
       }
     }
@@ -88,7 +94,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
    * @param hypothesisCnf
    * @return
    */
-  private def convertCnf(regulationCnf:Set[Clause], hypothesisCnf:Set[Clause]): String = {
+  private def convertCnf(regulationCnf:Set[Clause], hypothesisCnf:Set[Clause], transversalState:TransversalState): String = {
 
     val maxAtomNumber:Int = (regulationCnf ++ hypothesisCnf).flatMap(_.literals).filterNot(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.toInt)).max
 
@@ -117,7 +123,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
 
     val source = scala.io.Source.fromFile(cnfFilename, "UTF-8")
     val lines = source.getLines
-    logger.info(lines.mkString("\t"))
+    logger.info(ToposoidUtils.formatMessageForLogger(lines.mkString("\n"), transversalState.userId))
     cnfFilename
   }
 
@@ -128,10 +134,10 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
    * @param error
    * @return
    */
-  private def getSatSolverResult(status:Int, output:List[String], error:List[String], formulaSet:FormulaSet): SatSolverResult ={
+  private def getSatSolverResult(status:Int, output:List[String], error:List[String], formulaSet:FormulaSet, transversalState:TransversalState): SatSolverResult ={
     logger.debug("processResult:" +  status.toString)
     if(error.size == 0){
-      logger.info("OPTIMUM FOUND")
+      logger.info(ToposoidUtils.formatMessageForLogger("OPTIMUM FOUND", transversalState.userId))
       val solverStatus = output.filter(_.startsWith("s ")).head.replace("s ", "")
       if(solverStatus.indexOf("OPTIMUM") != -1){
         val solverResult:Map[String, Boolean] = output.filter(_.startsWith("v ")).head.split(" ").filterNot(_.equals("v")).foldLeft(Map.empty[String, Boolean]){
@@ -145,11 +151,11 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
         }
         SatSolverResult(solverResult, subFormulaResultMap, "OPTIMUM FOUND")
       }else{
-        logger.info("Unsatisfied")
+        logger.info(ToposoidUtils.formatMessageForLogger("Unsatisfied", transversalState.userId))
         SatSolverResult(Map.empty[String, Boolean],Map.empty[String, Boolean], "UNSATISFIED")
       }
     }else{
-      logger.error(error.mkString(" "))
+      logger.info(ToposoidUtils.formatMessageForLogger(error.mkString(" "), transversalState.userId))
       SatSolverResult(Map.empty[String, Boolean], Map.empty[String, Boolean], "ERROR")
     }
   }

@@ -1,23 +1,25 @@
 /*
- * Copyright 2021 Linked Ideal LLC.[https://linked-ideal.com/]
+ * Copyright (C) 2025  Linked Ideal LLC.[https://linked-ideal.com/]
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package controllers
 
 import cnf.FormulaUtils.{evaluateFormula, makeFormula, makeSubFormula}
 import cnf.{And, Formula}
+import com.ideal.linked.toposoid.common.{TRANSVERSAL_STATE, TransversalState}
 import com.ideal.linked.toposoid.protocol.model.sat.{FlattenedKnowledgeTree, SatSolverResult}
 import org.scalatestplus.play._
 import org.scalatestplus.play.guice._
@@ -33,6 +35,8 @@ import play.api.libs.json.Json
  * For more information, see https://www.playframework.com/documentation/latest/ScalaTestingWithScalaTest
  */
 class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting {
+
+  val transversalState:String = Json.toJson(TransversalState(userId="test-user", username="guest", roleId=0, csrfToken = "")).toString()
 
   "HomeController POST1" should {
     "returns an appropriate response" in {
@@ -56,7 +60,7 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
                              |}""".stripMargin
 
       val fr = FakeRequest(POST, "/execute")
-        .withHeaders("Content-type" -> "application/json")
+        .withHeaders("Content-type" -> "application/json", TRANSVERSAL_STATE.str -> transversalState)
         .withJsonBody(Json.parse(jsonStr))
       val result  = call(controller.execute(), fr)
       status(result) mustBe OK
@@ -103,7 +107,7 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
                              |}""".stripMargin
 
       val fr = FakeRequest(POST, "/execute")
-        .withHeaders("Content-type" -> "application/json")
+        .withHeaders("Content-type" -> "application/json", TRANSVERSAL_STATE.str -> transversalState)
         .withJsonBody(Json.parse(jsonStr))
       val result  = call(controller.execute(), fr)
       status(result) mustBe OK
