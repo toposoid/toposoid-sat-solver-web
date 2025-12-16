@@ -67,7 +67,7 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
       contentType(result) mustBe Some("application/json")
       val jsonResult = contentAsJson(result).toString()
       val satSolverResult:SatSolverResult = Json.parse(jsonResult).as[SatSolverResult]
-      satSolverResult.satResultMap.foreach(x => println(x._1, x._2) )
+      satSolverResult.satResultMap.foreach(x => println(x._1 + ":" +  x._2) )
 
       val flattenedKnowledgeTree:FlattenedKnowledgeTree = Json.parse(jsonStr).as[FlattenedKnowledgeTree]
 
@@ -114,7 +114,7 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
       contentType(result) mustBe Some("application/json")
       val jsonResult = contentAsJson(result).toString()
       val satSolverResult:SatSolverResult = Json.parse(jsonResult).as[SatSolverResult]
-      satSolverResult.satResultMap.foreach(x => println(x._1, x._2) )
+      satSolverResult.satResultMap.foreach(x => println(x._1 + ":" + x._2) )
 
       val flattenedKnowledgeTree:FlattenedKnowledgeTree = Json.parse(jsonStr).as[FlattenedKnowledgeTree]
       val convertSubFormulaMap1:Map[String, Formula] = flattenedKnowledgeTree.regulation.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
