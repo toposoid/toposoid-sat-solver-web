@@ -5,15 +5,16 @@ organization := "com.ideal.linked"
 version := "0.7-SNAPSHOT"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
-scalaVersion := "2.13.11"
-libraryDependencies += "org.typelevel" %% "cats-core" % "2.3.0"
+scalaVersion := "3.3.6"
+resolvers += Resolver.mavenLocal
 libraryDependencies += guice
-libraryDependencies += "com.ideal.linked" %% "scala-common" % "0.7-SNAPSHOT"
-libraryDependencies += "com.ideal.linked" %% "toposoid-common" % "0.7-SNAPSHOT"
-libraryDependencies += "com.ideal.linked" %% "toposoid-knowledgebase-model" % "0.7-SNAPSHOT"
-libraryDependencies += "com.ideal.linked" %% "toposoid-deduction-protocol-model" % "0.7-SNAPSHOT"
-libraryDependencies += "io.jvm.uuid" %% "scala-uuid" % "0.3.1"
-libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test
+libraryDependencies += "org.typelevel" %% "cats-core" % "2.13.0"  exclude("org.slf4j","slf4j-api")
+libraryDependencies += "com.ideal.linked" %% "scala-common" % "0.7-SNAPSHOT"  exclude("org.slf4j","slf4j-api")
+libraryDependencies += "com.ideal.linked" %% "toposoid-common" % "0.7-SNAPSHOT" exclude("org.slf4j","slf4j-api")
+libraryDependencies += "com.ideal.linked" %% "toposoid-knowledgebase-model" % "0.7-SNAPSHOT" exclude("org.slf4j","slf4j-api")
+libraryDependencies += "com.ideal.linked" %% "toposoid-deduction-protocol-model" % "0.7-SNAPSHOT" exclude("org.slf4j","slf4j-api")
+libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test exclude("org.slf4j","slf4j-api")
+libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.36" 
 
 organizationName := "Linked Ideal LLC.[https://linked-ideal.com/]"
 startYear := Some(2021)

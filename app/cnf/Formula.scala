@@ -270,7 +270,7 @@ case class Neg(f1: Formula) extends Formula {
 }
 
 object Formula extends Serializable {
-  implicit def symbol2bool(p: Symbol) = Bool(p.name)
+  implicit def symbol2bool(p: Symbol):Bool = Bool(p.name)
 }
 case class Literal(p: Bool, negative: Boolean) {
   def complement = Literal(p, ! negative)

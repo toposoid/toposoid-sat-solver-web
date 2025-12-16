@@ -33,8 +33,8 @@ import java.io.PrintWriter
 import scala.math.{abs, log10}
 import scala.collection.mutable.ArrayBuffer
 import scala.sys.process.{Process, ProcessLogger}
-import io.jvm.uuid.UUID
-
+//import io.jvm.uuid.UUID
+import play.api.libs.json.JsValue
 import java.nio.file.{Files, Paths}
 
 /**
@@ -51,7 +51,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
    *　4. Convert the result to Json and return Response.
    * @return
    */
-  def execute()  = Action(parse.json) { request =>
+  def execute():Action[JsValue] = Action(parse.json[JsValue]) { request =>
     val transversalState = Json.parse(request.headers.get(TRANSVERSAL_STATE .str).get).as[TransversalState]
     try {
       val json = request.body
@@ -114,7 +114,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
     val convertCnfExpressionHypo:Set[Set[Int]] = hypothesisCnf.map(_.literals.map( x => convertDummyVal(x.toString, maxAtomNumber + maxDummyValReg)))
     val cnfHeader:String =  "p wcnf %d %d 100\n".format(maxAtomNumber + maxDummyValReg + maxDummyValHypo, regulationCnf.size + hypothesisCnf.size)
 
-    val cnfFilename:String = conf.getString("maxsat.cnfFilePath") + "/"  + UUID.random.toString
+    val cnfFilename:String = conf.getString("maxsat.cnfFilePath") + "/"  + java.util.UUID.randomUUID().toString
     val fileIO = new PrintWriter(cnfFilename)
     fileIO.write(cnfHeader)
     convertCnfExpressionReg.foreach(x => fileIO.write("100 " + x.mkString(" ") + " 0\n") )

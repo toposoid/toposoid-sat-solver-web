@@ -11,3 +11,8 @@ target
 docker-compose-local.yml
 test.cnf
 maxinoMock.sh
+.devcontainer
+.metals
+.vscode
+project/project
+metals.sbt
