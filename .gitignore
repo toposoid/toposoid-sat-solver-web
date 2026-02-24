@@ -9,6 +9,7 @@ target
 /RUNNING_PID
 .DS_Store
 docker-compose-local.yml
+docker-compose-dev.yml
 test.cnf
 maxinoMock.sh
 .devcontainer
@@ -16,3 +17,4 @@ maxinoMock.sh
 .vscode
 project/project
 metals.sbt
+.bloop
