@@ -59,7 +59,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       val regulationCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.regulation)
       val hypothesisCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.hypothesis)
       val cnfFile = convertCnf(regulationCnf, hypothesisCnf, transversalState)
-      val(status:Int, output:List[String], error:List[String]) = this.executeProcess(Seq(conf.getString("maxsat.solver"), cnfFile))
+      val(status:Int, output:List[String], error:List[String]) = this.executeProcess(Seq(conf.getString("maxsat.solver"), "--old", cnfFile))
       Files.deleteIfExists(Paths.get(cnfFile))
       val response = this.getSatSolverResult(status, output, error, flattenedKnowledgeTree.hypothesis, transversalState)
       logger.info(ToposoidUtils.formatMessageForLogger("SAT completed.", transversalState.userId))
