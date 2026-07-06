@@ -1,0 +1,45 @@
+name: Test And Build
+on:
+  workflow_call:
+env:
+  PJ_ACTOR: toposoid
+  PJ_REPO: toposoid-sat-solver-web
+  PJ_BRANCH: feature
+  PJ_VERSION: 0.7-SNAPSHOT
+jobs:
+  unit-test_toposoid-sat-solver-web-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Clone ${{ env.PJ_REPO }}
+        uses: actions/checkout@v3
+        with:
+            repository: ${{ env.PJ_ACTOR }}/${{ env.PJ_REPO }}
+      - name: Execute tests
+        run: |
+            docker build --build-arg TARGET_BRANCH=${{ env.PJ_BRANCH }} --tag ${{ env.PJ_REPO }}:${{ env.PJ_VERSION }} -f Dockerfile-workflow .
+            docker compose -f docker-compose-workflow.yml up -d
+            docker compose -f docker-compose-workflow.yml exec -T ${{ env.PJ_REPO }} bash -c "cd ${{ env.PJ_REPO }} && sbt headerCheck"
+            docker compose -f docker-compose-workflow.yml exec -T ${{ env.PJ_REPO }} bash -c "cd ${{ env.PJ_REPO }} && sbt test:headerCheck"
+            docker compose -f docker-compose-workflow.yml exec -T ${{ env.PJ_REPO }} bash -c "cd ${{ env.PJ_REPO }} && sbt compile"
+            docker compose -f docker-compose-workflow.yml exec -T ${{ env.PJ_REPO }} bash -c "cd ${{ env.PJ_REPO }} && sbt test"
+            docker compose -f docker-compose-workflow.yml down
+            docker rmi --force ${{ env.PJ_REPO }}:${{ env.PJ_VERSION }}
+      - name: Docker meta
+        id: docker_meta
+        uses: crazy-max/ghaction-docker-meta@v3
+        with:
+          images: toposoid/${{ env.PJ_REPO }}:${{ env.PJ_VERSION }}
+      - name: Login to CR
+        uses: docker/login-action@v2
+        with:
+          username: toposoid
+          password: ${{ secrets.CR_TOKEN }}
+      - name: Build And Push Docker Image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          provenance: false
+          tags: toposoid/${{ env.PJ_REPO }}:${{ env.PJ_VERSION }}-arm64
+          build-args: |
+            TARGET_BRANCH=${{ env.PJ_BRANCH }}
