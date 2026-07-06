@@ -28,15 +28,18 @@ import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test._
 import play.api.libs.json.Json
+import scala.concurrent.duration.DurationInt
+import org.apache.pekko.util.Timeout
 /**
  * Add your spec here.
  * You can mock out a whole application including requests, plugins etc.
  *
  * For more information, see https://www.playframework.com/documentation/latest/ScalaTestingWithScalaTest
  */
-class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting {
+class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with DefaultAwaitTimeout with Injecting {
 
   val transversalState:String = Json.toJson(TransversalState(userId="test-user", username="guest", roleId=0, csrfToken = "")).toString()
+  override implicit def defaultAwaitTimeout: Timeout = 60.seconds
 
   "HomeController POST1" should {
     "returns an appropriate response" in {

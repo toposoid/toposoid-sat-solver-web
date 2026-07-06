@@ -10,12 +10,13 @@ RUN apt-get update \
 && apt-get install --no-install-recommends -y build-essential unzip zlib1g-dev cmake \
 && rm -rf /var/lib/apt/lists/* \
 && cd /tmp \
-&& git clone https://github.com/toposoid/EvalMaxSAT \
-&& mkdir EvalMaxSAT/build \
+&& git clone https://github.com/FlorentAvellaneda/EvalMaxSAT.git \
+&& mkdir -p EvalMaxSAT/build \
 && cd EvalMaxSAT/build \
 && cmake ..  \
 && make \
 && make install \
+&& cp main/EvalMaxSAT_bin /usr/local/bin/ \
 && cd /app \
 && git clone https://github.com/toposoid/toposoid-sat-solver-web.git \
 && cd toposoid-sat-solver-web \
