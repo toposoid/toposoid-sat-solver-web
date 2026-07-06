@@ -16,6 +16,7 @@ RUN apt-get update \
 && cmake ..  \
 && make \
 && make install \
+&& cp -f main/EvalMaxSAT_bin /usr/local/bin/ \
 && cd /app \
 && git clone https://github.com/toposoid/toposoid-sat-solver-web.git \
 && cd toposoid-sat-solver-web \
