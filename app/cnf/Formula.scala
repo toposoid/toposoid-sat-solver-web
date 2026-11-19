@@ -171,7 +171,28 @@ case class And(f1: Formula, f2: Formula) extends Formula {
   override def bools =
     f1.bools | f2.bools
   def value(assignment: Map[Bool,Boolean]) =
-    (f1.value(assignment), f2.value(assignment)) match {
+    //trueとfalseがNoneになってしまうのを修正する。
+    val f1_result = f1 == Bool("true") match {
+      case true => Option(true)
+      case _ => {
+        f1 == Bool("false") match {
+          case true => Option(false)
+          case _ => f1.value(assignment)
+        }
+      }
+    }
+    val f2_result = f2 == Bool("true") match {
+      case true => Option(true)
+      case _ => {
+        float2Float == Bool("false") match {
+          case true => Option(false)
+          case _ => f2.value(assignment)
+        }
+      }
+    }
+    //(f1.value(assignment), f2.value(assignment)) match {
+    (f1_result, f2_result) match {  
+    //(f1.value(assignment), f2.value(assignment)) match {
       case (Some(true), Some(true)) => Some(true)
       case (Some(false), _) | (_, Some(false)) => Some(false)
       case _ => None
@@ -202,7 +223,28 @@ case class Or(f1: Formula, f2: Formula) extends Formula {
   override def bools =
     f1.bools | f2.bools
   def value(assignment: Map[Bool,Boolean]) =
-    (f1.value(assignment), f2.value(assignment)) match {
+    //trueとfalseがNoneになってしまうのを修正する。
+    val f1_result = f1 == Bool("true") match {
+      case true => Option(true)
+      case _ => {
+        f1 == Bool("false") match {
+          case true => Option(false)
+          case _ => f1.value(assignment)
+        }
+      }
+    }
+    val f2_result = f2 == Bool("true") match {
+      case true => Option(true)
+      case _ => {
+        float2Float == Bool("false") match {
+          case true => Option(false)
+          case _ => f2.value(assignment)
+        }
+      }
+    }
+    //(f1.value(assignment), f2.value(assignment)) match {
+    (f1_result, f2_result) match {      
+    //(f1.value(assignment), f2.value(assignment)) match {
       case (Some(false), Some(false)) => Some(false)
       case (Some(true), _) | (_, Some(true)) => Some(true)
       case _ => None
@@ -233,7 +275,27 @@ case class Imp(f1: Formula, f2: Formula) extends Formula {
   override def bools =
     f1.bools | f2.bools
   def value(assignment: Map[Bool,Boolean]) =
-    (f1.value(assignment), f2.value(assignment)) match {
+    //trueとfalseがNoneになってしまうのを修正する。
+    val f1_result = f1 == Bool("true") match {
+      case true => Option(true)
+      case _ => {
+        f1 == Bool("false") match {
+          case true => Option(false)
+          case _ => f1.value(assignment)
+        }
+      }
+    }
+    val f2_result = f2 == Bool("true") match {
+      case true => Option(true)
+      case _ => {
+        float2Float == Bool("false") match {
+          case true => Option(false)
+          case _ => f2.value(assignment)
+        }
+      }
+    }
+    //(f1.value(assignment), f2.value(assignment)) match {
+    (f1_result, f2_result) match {  
       case (Some(true), Some(false)) => Some(false)
       case (Some(false), _) | (_, Some(true)) => Some(true)
       case _ => None

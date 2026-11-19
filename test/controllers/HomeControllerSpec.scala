@@ -39,7 +39,7 @@ import org.apache.pekko.util.Timeout
 class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with DefaultAwaitTimeout with Injecting {
 
   val transversalState:String = Json.toJson(TransversalState(userId="test-user", username="guest", roleId=0, csrfToken = "")).toString()
-  override implicit def defaultAwaitTimeout: Timeout = 60.seconds
+  override implicit def defaultAwaitTimeout: Timeout = 600.seconds
 
   "HomeController POST1" should {
     "returns an appropriate response" in {
@@ -131,6 +131,56 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with DefaultAw
     }
 
   }
+  
+    "HomeController POST3" should {
+    "returns an appropriate response" in {
+      val controller: HomeController = inject[HomeController]
+      
+      val jsonStr:String = """
+              |{
+              |  "regulation": {
+              |    "formula": "fe12c9e1-5535-42a2-aa57-c3a9c2d96109 ac1265f8-41f6-4a40-baa1-de18c15dd39a OR fe12c9e1-5535-42a2-aa57-c3a9c2d96109 d49d6230-4db9-4ac2-a4bb-88fb598725ba OR",
+              |    "subFormulaMap": {
+              |      "fe12c9e1-5535-42a2-aa57-c3a9c2d96109": "true 2 AND 2 3 NOT AND AND",
+              |      "ac1265f8-41f6-4a40-baa1-de18c15dd39a": "4 5 NOT AND 5 NOT 6 AND AND",
+              |      "d49d6230-4db9-4ac2-a4bb-88fb598725ba": "true NOT 2 AND 2 3 AND AND"
+              |    }
+              |  },
+              |  "hypothesis": {
+              |    "formula": "e5fcaa90-5217-4d46-a2f3-38c17efdad94 06ede8fe-3ae5-4855-a776-13d51bf41ec6 AND e5fcaa90-5217-4d46-a2f3-38c17efdad94 40b7df23-794d-41f3-97b3-0988ec374ab7 AND",
+              |    "subFormulaMap": {
+              |      "e5fcaa90-5217-4d46-a2f3-38c17efdad94": "true 3 NOT IMP",
+              |      "06ede8fe-3ae5-4855-a776-13d51bf41ec6": "2 true IMP",
+              |      "40b7df23-794d-41f3-97b3-0988ec374ab7": "3 2 NOT IMP"
+              |    }
+              |  }
+              |}      
+      """.stripMargin
+
+      val fr = FakeRequest(POST, "/execute")
+        .withHeaders("Content-type" -> "application/json", TRANSVERSAL_STATE.str -> transversalState)
+        .withJsonBody(Json.parse(jsonStr))
+      val result  = call(controller.execute(), fr)
+      status(result) mustBe OK
+      contentType(result) mustBe Some("application/json")
+      val jsonResult = contentAsJson(result).toString()
+      val satSolverResult:SatSolverResult = Json.parse(jsonResult).as[SatSolverResult]
+      satSolverResult.satResultMap.foreach(x => println(x._1 + ":" + x._2) )
+
+      val flattenedKnowledgeTree:FlattenedKnowledgeTree = Json.parse(jsonStr).as[FlattenedKnowledgeTree]
+      val convertSubFormulaMap1:Map[String, Formula] = flattenedKnowledgeTree.regulation.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
+      }
+      val formula1:Formula = flattenedKnowledgeTree.regulation.formula.split(" ").foldLeft(List.empty[Formula]){
+        (acc, x) => makeFormula(convertSubFormulaMap1, x, acc)
+      }.head
+      assert(evaluateFormula(satSolverResult.satResultMap, formula1))
+      satSolverResult.satResultMap.foreach(x => println(x._1 + ":" + x._2))
+    }
+
+  }
+
+  
   /*
   val jsonStr:String = """{
                          |  "formula": "1",

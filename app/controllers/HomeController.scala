@@ -36,6 +36,7 @@ import scala.sys.process.{Process, ProcessLogger}
 //import io.jvm.uuid.UUID
 import play.api.libs.json.JsValue
 import java.nio.file.{Files, Paths}
+import cnf.Bool
 
 /**
  * This controller creates an `Action` to apply the satisfiability problem (SAT) to the formula.
@@ -85,7 +86,28 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
         }.head
       }
     }
-    Tseitin.transform(formula)
+    excludeTrivialAssignment(Tseitin.transform(formula))
+  }
+
+  private def excludeTrivialAssignment(formula:Set[Clause]):Set[Clause] = {    
+    
+    formula.foldLeft(Set.empty[Clause]){
+      (acc, x) =>
+        if(x.literals.contains(Literal(Bool("true"), false)) || x.literals.contains(Literal(Bool("false"), true))){
+          acc
+        }else{
+          val literals = x.literals.foldLeft(Set.empty[Literal]){
+            (acc2, y) => {
+              if(y.toString.equals("-true") || y.toString.equals("+false")){
+                acc2
+              }else{
+                acc2 + y
+              }              
+            }
+          }
+          acc + Clause(literals)
+        }
+    }    
   }
 
   /**
