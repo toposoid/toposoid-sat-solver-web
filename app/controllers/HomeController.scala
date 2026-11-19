@@ -253,9 +253,19 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       val solverStatus = output.filter(_.startsWith("s ")).head.replace("s ", "")
       if(solverStatus.indexOf("OPTIMUM") != -1){
         //TODOここを直す
+
+        val reverseOriginalVarMap = originalVarMap.filter(x => x._2.isDefined).map(y => (y._1 -> y._2.get)).map(_.swap)
+
         val solverResult:Map[String, Boolean] = output.filter(_.startsWith("v ")).head.split(" ").filterNot(_.equals("v")).foldLeft(Map.empty[String, Boolean]){
-          (acc, x) => acc ++ Map(x.replace("-", "") -> (!x.startsWith("-")))
+          (acc, x) => {
+            val originalVar = x.replace("-", "").toInt
+            reverseOriginalVarMap.isDefinedAt(originalVar) match {
+              case true => acc ++ Map(reverseOriginalVarMap.get(originalVar).get.toString -> (!x.startsWith("-")))
+              case _ => acc
+            }            
+          }
         }
+
         val convertSubFormulaMap:Map[String, Formula] = formulaSet.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
           (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
         }
