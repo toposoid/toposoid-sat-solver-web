@@ -81,6 +81,13 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with DefaultAw
         (acc, x) => makeFormula(convertSubFormulaMap1, x, acc)
       }.head
       assert(evaluateFormula(satSolverResult.satResultMap, formula1))
+      val convertSubFormulaMap2:Map[String, Formula] = flattenedKnowledgeTree.hypothesis.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
+      }
+      val formula2:Formula = flattenedKnowledgeTree.hypothesis.formula.split(" ").foldLeft(List.empty[Formula]){
+        (acc, x) => makeFormula(convertSubFormulaMap2, x, acc)
+      }.head
+      assert(evaluateFormula(satSolverResult.satResultMap, formula2))
       satSolverResult.satResultMap.foreach(x => println(x._1 + ":" + x._2))
     }
 
@@ -127,6 +134,15 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with DefaultAw
         (acc, x) => makeFormula(convertSubFormulaMap1, x, acc)
       }.head
       assert(evaluateFormula(satSolverResult.satResultMap, formula1))
+
+      val convertSubFormulaMap2:Map[String, Formula] = flattenedKnowledgeTree.hypothesis.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
+      }
+      val formula2:Formula = flattenedKnowledgeTree.hypothesis.formula.split(" ").foldLeft(List.empty[Formula]){
+        (acc, x) => makeFormula(convertSubFormulaMap2, x, acc)
+      }.head
+      assert(evaluateFormula(satSolverResult.satResultMap, formula2))
+
       satSolverResult.satResultMap.foreach(x => println(x._1 + ":" + x._2))
     }
 
@@ -175,6 +191,15 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with DefaultAw
         (acc, x) => makeFormula(convertSubFormulaMap1, x, acc)
       }.head
       assert(evaluateFormula(satSolverResult.satResultMap, formula1))
+
+      val convertSubFormulaMap2:Map[String, Formula] = flattenedKnowledgeTree.hypothesis.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
+        (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
+      }
+      val formula2:Formula = flattenedKnowledgeTree.hypothesis.formula.split(" ").foldLeft(List.empty[Formula]){
+        (acc, x) => makeFormula(convertSubFormulaMap2, x, acc)
+      }.head
+      assert(evaluateFormula(satSolverResult.satResultMap, formula2))
+
       satSolverResult.satResultMap.foreach(x => println(x._1 + ":" + x._2))
     }
 

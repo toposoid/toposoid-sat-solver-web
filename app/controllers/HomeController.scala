@@ -59,7 +59,6 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
     try {
       val json = request.body
       val flattenedKnowledgeTree : FlattenedKnowledgeTree = Json.parse(json.toString).as[FlattenedKnowledgeTree]
-      preprocess(flattenedKnowledgeTree)
       val regulationCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.regulation)
       val hypothesisCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.hypothesis)
       val (cnfFile, originalVarMap) = convertCnf(flattenedKnowledgeTree, regulationCnf, hypothesisCnf, transversalState)
@@ -76,27 +75,6 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       }
     }
   }
-
-  private def preprocess(flattenedKnowledgeTree:FlattenedKnowledgeTree):Unit = {
-    val regulationElements = flattenedKnowledgeTree.regulation.subFormulaMap.values.map(_.split(" ")).toList.flatten
-    val hypothesisElements = flattenedKnowledgeTree.hypothesis.subFormulaMap.values.map(_.split(" ")).toList.flatten
-    val originalVariables = (regulationElements ::: hypothesisElements).foldLeft(List.empty[Int]){
-      (acc, x) => {
-        x.toIntOption.isDefined match {
-          case true => acc :+ x.toIntOption.get
-          case _ => acc
-        }
-      }
-    }.distinct
-    print(originalVariables) 
-    print(originalVariables.max)
-
-    //基本的には、これらの数字に真偽が割り振られて返せれば良い。
-    //ただし、これから更に変数がカットされて、真偽値がつかないものが出てくる。
-
-
-  }
-
 
   private def getCnfExpression(formulaSet:FormulaSet): Set[Clause] ={
     val convertSubFormulaMap:Map[String, Formula] = formulaSet.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
@@ -142,6 +120,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
   private def convertCnf(flattenedKnowledgeTree:FlattenedKnowledgeTree, regulationCnf:Set[Clause], hypothesisCnf:Set[Clause], transversalState:TransversalState): (String, Map[Int, Option[Int]]) = {
 
     //val maxAtomNumber:Int = (regulationCnf ++ hypothesisCnf).flatMap(_.literals).filterNot(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.toInt)).max
+    //CNFファイルは、命題変数を連番にする必要があるためケアしていく。ただし、連番にした結果は、元の命題変数名にマップして戻せるようにする。
     val regulationElements = flattenedKnowledgeTree.regulation.subFormulaMap.values.map(_.split(" ")).toList.flatten
     val hypothesisElements = flattenedKnowledgeTree.hypothesis.subFormulaMap.values.map(_.split(" ")).toList.flatten
     val originalVariables = (regulationElements ::: hypothesisElements).foldLeft(List.empty[Int]){
@@ -252,7 +231,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       logger.info(ToposoidUtils.formatMessageForLogger("OPTIMUM FOUND", transversalState.userId))
       val solverStatus = output.filter(_.startsWith("s ")).head.replace("s ", "")
       if(solverStatus.indexOf("OPTIMUM") != -1){
-        //TODOここを直す
+        
 
         val reverseOriginalVarMap = originalVarMap.filter(x => x._2.isDefined).map(y => (y._1 -> y._2.get)).map(_.swap)
 
@@ -265,7 +244,8 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
             }            
           }
         }
-
+        //TODOここを直す
+        /*
         val convertSubFormulaMap:Map[String, Formula] = formulaSet.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
           (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
         }
@@ -273,6 +253,8 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
           (acc, x) => acc ++ Map(x._1 -> evaluateFormula(solverResult, x._2))
         }
         SatSolverResult(solverResult, subFormulaResultMap, "OPTIMUM FOUND")
+        */
+        SatSolverResult(solverResult, Map.empty[String, Boolean], "OPTIMUM FOUND")
       }else{
         logger.info(ToposoidUtils.formatMessageForLogger("Unsatisfied", transversalState.userId))
         SatSolverResult(Map.empty[String, Boolean],Map.empty[String, Boolean], "UNSATISFIED")
