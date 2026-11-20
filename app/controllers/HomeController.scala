@@ -38,6 +38,8 @@ import play.api.libs.json.JsValue
 import java.nio.file.{Files, Paths}
 import cnf.Bool
 
+
+
 /**
  * This controller creates an `Action` to apply the satisfiability problem (SAT) to the formula.
  */
@@ -59,10 +61,10 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       val flattenedKnowledgeTree : FlattenedKnowledgeTree = Json.parse(json.toString).as[FlattenedKnowledgeTree]
       val regulationCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.regulation)
       val hypothesisCnf:Set[Clause] = getCnfExpression(flattenedKnowledgeTree.hypothesis)
-      val cnfFile = convertCnf(regulationCnf, hypothesisCnf, transversalState)
+      val (cnfFile, originalVarMap) = convertCnf(flattenedKnowledgeTree, regulationCnf, hypothesisCnf, transversalState)
       val(status:Int, output:List[String], error:List[String]) = this.executeProcess(Seq(conf.getString("maxsat.solver"), "--old", cnfFile))
       Files.deleteIfExists(Paths.get(cnfFile))
-      val response = this.getSatSolverResult(status, output, error, flattenedKnowledgeTree.hypothesis, transversalState)
+      val response = this.getSatSolverResult(status, output, error, flattenedKnowledgeTree.hypothesis, originalVarMap, transversalState)
       logger.info(ToposoidUtils.formatMessageForLogger("SAT completed.", transversalState.userId))
       Ok(Json.toJson(response)).as(JSON)
 
@@ -89,8 +91,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
     excludeTrivialAssignment(Tseitin.transform(formula))
   }
 
-  private def excludeTrivialAssignment(formula:Set[Clause]):Set[Clause] = {    
-    
+  private def excludeTrivialAssignment(formula:Set[Clause]):Set[Clause] = {
     formula.foldLeft(Set.empty[Clause]){
       (acc, x) =>
         if(x.literals.contains(Literal(Bool("true"), false)) || x.literals.contains(Literal(Bool("false"), true))){
@@ -107,7 +108,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
           }
           acc + Clause(literals)
         }
-    }    
+    }  
   }
 
   /**
@@ -116,10 +117,71 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
    * @param hypothesisCnf
    * @return
    */
-  private def convertCnf(regulationCnf:Set[Clause], hypothesisCnf:Set[Clause], transversalState:TransversalState): String = {
+  private def convertCnf(flattenedKnowledgeTree:FlattenedKnowledgeTree, regulationCnf:Set[Clause], hypothesisCnf:Set[Clause], transversalState:TransversalState): (String, Map[Int, Option[Int]]) = {
 
-    val maxAtomNumber:Int = (regulationCnf ++ hypothesisCnf).flatMap(_.literals).filterNot(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.toInt)).max
+    //val maxAtomNumber:Int = (regulationCnf ++ hypothesisCnf).flatMap(_.literals).filterNot(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.toInt)).max
+    //CNFファイルは、命題変数を連番にする必要があるためケアしていく。ただし、連番にした結果は、元の命題変数名にマップして戻せるようにする。
+    val regulationElements = flattenedKnowledgeTree.regulation.subFormulaMap.values.map(_.split(" ")).toList.flatten
+    val hypothesisElements = flattenedKnowledgeTree.hypothesis.subFormulaMap.values.map(_.split(" ")).toList.flatten
+    val originalVariables = (regulationElements ::: hypothesisElements).foldLeft(List.empty[Int]){
+      (acc, x) => {
+        x.toIntOption.isDefined match {
+          case true => acc :+ x.toIntOption.get
+          case _ => acc
+        }
+      }
+    }.distinct
 
+    val contractedOriginalVars = (regulationCnf ++ hypothesisCnf).flatMap(_.literals).filterNot(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.toInt))    
+    val originalVarMap = (1 to originalVariables.max).foldLeft(Map.empty[Int, Option[Int]]){
+      (acc, x) => {
+        contractedOriginalVars.contains(x) match {
+          case true => acc + (x ->  Option(acc.filter(y => y._2.isDefined).size + 1))
+          case _ => acc + (x -> None)
+        }        
+      }
+    }
+
+    val seqNumber1 = originalVarMap.values.flatten.size match {
+      case 0 => 0
+      case _ => originalVarMap.values.flatten.max
+    }
+
+    val dummyRegulationElements = regulationCnf.flatMap(_.literals).filter(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.replace("_", "").toInt))
+    val dummyRegulationVarMap = dummyRegulationElements.size match {
+      case 0 => Map.empty[Int, Option[Int]]
+      case _ => {
+        (1 to dummyRegulationElements.max).foldLeft(Map.empty[Int, Option[Int]]){
+          (acc, x) => {
+            dummyRegulationElements.contains(x) match {
+              case true => acc + (x ->  Option(acc.filter(y => y._2.isDefined).size + seqNumber1 + 1))
+              case _ => acc + (x -> None)
+            }        
+          }
+        }
+      }      
+    }
+
+    val seqNumber2 = dummyRegulationVarMap.values.flatten.size match {
+      case 0 => 0
+      case _ => dummyRegulationVarMap.values.flatten.max
+    }
+    
+    val dummyHypothesisElements = hypothesisCnf.flatMap(_.literals).filter(x => x.toString.startsWith("-_") || x.toString.startsWith("+_")).map(x => abs(x.toString.replace("_", "").toInt))
+    val dummyHypothesisVarMap = dummyHypothesisElements.size match {
+      case 0 => Map.empty[Int, Option[Int]]
+      case _ => {
+        (1 to dummyHypothesisElements.max).foldLeft(Map.empty[Int, Option[Int]]){
+          (acc, x) => {
+            dummyHypothesisElements.contains(x) match {
+              case true => acc + (x ->  Option(acc.filter(y => y._2.isDefined).size + seqNumber2 + 1))
+              case _ => acc + (x -> None)
+            }        
+          }
+        }
+      }
+    }
+    /*    
     val dummyValuesReg:Set[Literal] = regulationCnf.flatMap(_.literals).filter(x => x.toString.startsWith("-_") || x.toString.startsWith("+_"))
     val maxDummyValReg:Int = dummyValuesReg.size match {
       case 0 => 0
@@ -131,10 +193,17 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       case 0 => 0
       case _  => dummyValuesHypo.map(_.toString.replace("_", "").toInt).max
     }
+    
 
     val convertCnfExpressionReg:Set[Set[Int]] = regulationCnf.map(_.literals.map( x => convertDummyVal(x.toString, maxAtomNumber)))
     val convertCnfExpressionHypo:Set[Set[Int]] = hypothesisCnf.map(_.literals.map( x => convertDummyVal(x.toString, maxAtomNumber + maxDummyValReg)))
-    val cnfHeader:String =  "p wcnf %d %d 100\n".format(maxAtomNumber + maxDummyValReg + maxDummyValHypo, regulationCnf.size + hypothesisCnf.size)
+    */
+
+    val convertCnfExpressionReg:Set[Set[Int]] = regulationCnf.map(_.literals.map( x => convertCnfVal(x.toString, originalVarMap, dummyRegulationVarMap)))
+    val convertCnfExpressionHypo:Set[Set[Int]] = hypothesisCnf.map(_.literals.map( x => convertCnfVal(x.toString, originalVarMap, dummyHypothesisVarMap)))
+
+    val maxNumber = (convertCnfExpressionReg ++ convertCnfExpressionHypo).map(x => x.map(y => y)).flatten.toList.max
+    val cnfHeader:String =  "p wcnf %d %d 100\n".format(maxNumber, regulationCnf.size + hypothesisCnf.size)
 
     val cnfFilename:String = conf.getString("maxsat.cnfFilePath") + "/"  + java.util.UUID.randomUUID().toString
     val fileIO = new PrintWriter(cnfFilename)
@@ -146,7 +215,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
     val source = scala.io.Source.fromFile(cnfFilename, "UTF-8")
     val lines = source.getLines
     logger.info(ToposoidUtils.formatMessageForLogger(lines.mkString("\n"), transversalState.userId))
-    cnfFilename
+    (cnfFilename, originalVarMap)
   }
 
   /**
@@ -156,15 +225,27 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
    * @param error
    * @return
    */
-  private def getSatSolverResult(status:Int, output:List[String], error:List[String], formulaSet:FormulaSet, transversalState:TransversalState): SatSolverResult ={
+  private def getSatSolverResult(status:Int, output:List[String], error:List[String], formulaSet:FormulaSet, originalVarMap:Map[Int, Option[Int]], transversalState:TransversalState): SatSolverResult ={
     logger.debug("processResult:" +  status.toString)
     if(error.size == 0){
       logger.info(ToposoidUtils.formatMessageForLogger("OPTIMUM FOUND", transversalState.userId))
       val solverStatus = output.filter(_.startsWith("s ")).head.replace("s ", "")
       if(solverStatus.indexOf("OPTIMUM") != -1){
+        
+
+        val reverseOriginalVarMap = originalVarMap.filter(x => x._2.isDefined).map(y => (y._1 -> y._2.get)).map(_.swap)
+
         val solverResult:Map[String, Boolean] = output.filter(_.startsWith("v ")).head.split(" ").filterNot(_.equals("v")).foldLeft(Map.empty[String, Boolean]){
-          (acc, x) => acc ++ Map(x.replace("-", "") -> (!x.startsWith("-")))
+          (acc, x) => {
+            val originalVar = x.replace("-", "").toInt
+            reverseOriginalVarMap.isDefinedAt(originalVar) match {
+              case true => acc ++ Map(reverseOriginalVarMap.get(originalVar).get.toString -> (!x.startsWith("-")))
+              case _ => acc
+            }            
+          }
         }
+        //TODOここを直す
+        /*
         val convertSubFormulaMap:Map[String, Formula] = formulaSet.subFormulaMap.foldLeft(Map.empty[String, Formula]) {
           (acc, x) => acc ++ Map(x._1 -> x._2.split(" ").foldLeft(List.empty[Formula]){(acc, x) => makeSubFormula(x, acc)}.head)
         }
@@ -172,6 +253,8 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
           (acc, x) => acc ++ Map(x._1 -> evaluateFormula(solverResult, x._2))
         }
         SatSolverResult(solverResult, subFormulaResultMap, "OPTIMUM FOUND")
+        */
+        SatSolverResult(solverResult, Map.empty[String, Boolean], "OPTIMUM FOUND")
       }else{
         logger.info(ToposoidUtils.formatMessageForLogger("Unsatisfied", transversalState.userId))
         SatSolverResult(Map.empty[String, Boolean],Map.empty[String, Boolean], "UNSATISFIED")
@@ -197,6 +280,22 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents) e
       atom.toInt
     }
   }
+
+
+  private def convertCnfVal(atom:String, originalVarMap:Map[Int, Option[Int]], dummytVarMap:Map[Int, Option[Int]]): Int = {
+    if(atom.contains("+_")) {
+      dummytVarMap.get(atom.replace("+_", "").toInt).get.get
+    } else if(atom.contains("-_")) {
+      -1 * dummytVarMap.get(atom.replace("-_", "").toInt).get.get
+    } else{
+      if(atom.startsWith("-")){
+        -1 * originalVarMap.get(atom.replace("-", "").toInt).get.get
+      }else{
+        originalVarMap.get(atom.replace("+", "").toInt).get.get
+      }      
+    }
+  }
+
 
   /**
    * Execution of external process
